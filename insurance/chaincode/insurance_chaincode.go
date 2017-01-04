@@ -16,19 +16,12 @@ type InsuranceCC struct {
 }
 
 var clientsIndexStr = "_clientsIndex"				//name for the key/value that will store a list of all known clients-hashes
-var contractsIndex = "_contractsIndex"				//name for the key/value that will store all contracts
+var contractsIndexStr = "_contractsIndex"				//name for the key/value that will store all contracts
 
 type Client struct{
 	ClientHash string `json:"clientHash"`					//the fieldtags are needed to keep case from bouncing around
 	Status string `json:"status"`								// fraud / suspicious / ok
 	ContractHistroy []Contract `json:contractHistory`
-}
-
-type AnOpenTrade struct{
-	User string `json:"user"`					//user who created the open trade order
-	Timestamp int64 `json:"timestamp"`			//utc timestamp of creation
-	Want Description  `json:"want"`				//description of desired client
-	Willing []Description `json:"willing"`		//array of clients willing to trade away
 }
 
 type Contract struct{
@@ -77,14 +70,14 @@ func (t *InsuranceCC) Init(stub shim.ChaincodeStubInterface, function string, ar
 
 	var empty []string
 	jsonAsBytes, _ := json.Marshal(empty)								//marshal an emtpy array of strings to clear the index
-	err = stub.PutState(clientsIndex, jsonAsBytes)
+	err = stub.PutState(clientsIndexStr, jsonAsBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	var contracts AllContracts
 	jsonAsBytes, _ = json.Marshal(contracts)								//clear the contracts index
-	err = stub.PutState(contractsIndex, jsonAsBytes)
+	err = stub.PutState(contractsIndexStr, jsonAsBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +172,7 @@ func (t *InsuranceCC) Delete(stub shim.ChaincodeStubInterface, args []string) ([
 	}
 
 	//get the client index
-	clientsAsBytes, err := stub.GetState(clientsIndex)
+	clientsAsBytes, err := stub.GetState(clientsIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get client index")
 	}
@@ -199,7 +192,7 @@ func (t *InsuranceCC) Delete(stub shim.ChaincodeStubInterface, args []string) ([
 		}
 	}
 	jsonAsBytes, _ := json.Marshal(clientIndex)									//save new index
-	err = stub.PutState(clientsIndex, jsonAsBytes)
+	err = stub.PutState(clientsIndexStr, jsonAsBytes)
 	return nil, nil
 }
 
@@ -265,7 +258,7 @@ func (t *InsuranceCC) init_client(stub shim.ChaincodeStubInterface, args []strin
 	}
 	res := Client{}
 	json.Unmarshal(clientAsBytes, &res)
-	if res.Name == clientHash{
+	if res.ClientHash == clientHash{
 		fmt.Println("This client arleady exists: " + clientHash)
 		fmt.Println(res);
 		return nil, errors.New("This client arleady exists")				//all stop. a client by this hash exists
@@ -273,13 +266,13 @@ func (t *InsuranceCC) init_client(stub shim.ChaincodeStubInterface, args []strin
 
 	//build the client json string manually
 	str := `{"clientHash": "` + clientHash + `", "status": "` + status + `"}`
-	err = stub.PutState(name, []byte(str))									//store client with id as key
+	err = stub.PutState(clientHash, []byte(str))									//store client with id as key
 	if err != nil {
 		return nil, err
 	}
 
 	//get the client index
-	clientAsBytes, err := stub.GetState(clientsIndex)
+	clientsAsBytes, err := stub.GetState(clientsIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get client index")
 	}
@@ -290,7 +283,7 @@ func (t *InsuranceCC) init_client(stub shim.ChaincodeStubInterface, args []strin
 	clientIndex = append(clientIndex, clientHash)									//add client name to index list
 	fmt.Println("! client index: ", clientIndex)
 	jsonAsBytes, _ := json.Marshal(clientIndex)
-	err = stub.PutState(clientsIndex, jsonAsBytes)						//store name of client
+	err = stub.PutState(clientsIndexStr, jsonAsBytes)						//store name of client
 
 	fmt.Println("- end init client")
 	return nil, nil
@@ -316,7 +309,7 @@ func (t *InsuranceCC) set_user(stub shim.ChaincodeStubInterface, args []string) 
 	}
 	res := Client{}
 	json.Unmarshal(clientAsBytes, &res)										//un stringify it aka JSON.parse()
-	res.User = args[1]														//change the user
+//	res.User = args[1]														//change the user
 
 	jsonAsBytes, _ := json.Marshal(res)
 	err = stub.PutState(args[0], jsonAsBytes)								//rewrite the client with id as key
@@ -331,7 +324,7 @@ func (t *InsuranceCC) set_user(stub shim.ChaincodeStubInterface, args []string) 
 // ============================================================================================================================
 // Open Trade - create an open trade for a client you want with clients you have
 // ============================================================================================================================
-func (t *InsuranceCC) open_trade(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+/*func (t *InsuranceCC) open_trade(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 	var will_size int
 	var trade_away Description
@@ -380,7 +373,7 @@ func (t *InsuranceCC) open_trade(stub shim.ChaincodeStubInterface, args []string
 	}
 
 	//get the open trade struct
-	tradesAsBytes, err := stub.GetState(contractsIndex)
+	tradesAsBytes, err := stub.GetState(contractsIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get opentrades")
 	}
@@ -390,17 +383,19 @@ func (t *InsuranceCC) open_trade(stub shim.ChaincodeStubInterface, args []string
 	trades.OpenTrades = append(trades.OpenTrades, open);						//append to open trades
 	fmt.Println("! appended open to trades")
 	jsonAsBytes, _ = json.Marshal(trades)
-	err = stub.PutState(contractsIndex, jsonAsBytes)								//rewrite open orders
+	err = stub.PutState(contractsIndexStr, jsonAsBytes)								//rewrite open orders
 	if err != nil {
 		return nil, err
 	}
 	fmt.Println("- end open trade")
 	return nil, nil
 }
-
+*/
 // ============================================================================================================================
 // Perform Trade - close an open trade and move ownership
 // ============================================================================================================================
+
+/*
 func (t *InsuranceCC) perform_trade(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 
@@ -422,7 +417,7 @@ func (t *InsuranceCC) perform_trade(stub shim.ChaincodeStubInterface, args []str
 	}
 
 	//get the open trade struct
-	tradesAsBytes, err := stub.GetState(contractsIndex)
+	tradesAsBytes, err := stub.GetState(contractsIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get opentrades")
 	}
@@ -458,7 +453,7 @@ func (t *InsuranceCC) perform_trade(stub shim.ChaincodeStubInterface, args []str
 
 				trades.OpenTrades = append(trades.OpenTrades[:i], trades.OpenTrades[i+1:]...)		//remove trade
 				jsonAsBytes, _ := json.Marshal(trades)
-				err = stub.PutState(contractsIndex, jsonAsBytes)										//rewrite open orders
+				err = stub.PutState(contractsIndexStr, jsonAsBytes)										//rewrite open orders
 				if err != nil {
 					return nil, err
 				}
@@ -468,17 +463,18 @@ func (t *InsuranceCC) perform_trade(stub shim.ChaincodeStubInterface, args []str
 	fmt.Println("- end close trade")
 	return nil, nil
 }
-
+*/
 // ============================================================================================================================
 // findClient4Trade - look for a matching client that this user owns and return it
 // ============================================================================================================================
+/*
 func findClient4Trade(stub shim.ChaincodeStubInterface, user string, color string, size int )(m Client, err error){
 	var fail Client;
 	fmt.Println("- start find client 4 trade")
 	fmt.Println("looking for " + user + ", " + color + ", " + strconv.Itoa(size));
 
 	//get the client index
-	clientsAsBytes, err := stub.GetState(clientsIndex)
+	clientsAsBytes, err := stub.GetState(clientsIndexStr)
 	if err != nil {
 		return fail, errors.New("Failed to get client index")
 	}
@@ -507,7 +503,7 @@ func findClient4Trade(stub shim.ChaincodeStubInterface, user string, color strin
 	fmt.Println("- end find client 4 trade - error")
 	return fail, errors.New("Did not find client to use in this trade")
 }
-
+*/
 // ============================================================================================================================
 // Make Timestamp - create a timestamp in ms
 // ============================================================================================================================
@@ -518,6 +514,7 @@ func makeTimestamp() int64 {
 // ============================================================================================================================
 // Remove Open Trade - close an open trade
 // ============================================================================================================================
+/*
 func (t *InsuranceCC) remove_trade(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	var err error
 
@@ -534,7 +531,7 @@ func (t *InsuranceCC) remove_trade(stub shim.ChaincodeStubInterface, args []stri
 	}
 
 	//get the open trade struct
-	tradesAsBytes, err := stub.GetState(contractsIndex)
+	tradesAsBytes, err := stub.GetState(contractsIndexStr)
 	if err != nil {
 		return nil, errors.New("Failed to get opentrades")
 	}
@@ -547,7 +544,7 @@ func (t *InsuranceCC) remove_trade(stub shim.ChaincodeStubInterface, args []stri
 			fmt.Println("found the trade");
 			trades.OpenTrades = append(trades.OpenTrades[:i], trades.OpenTrades[i+1:]...)				//remove this trade
 			jsonAsBytes, _ := json.Marshal(trades)
-			err = stub.PutState(contractsIndex, jsonAsBytes)												//rewrite open orders
+			err = stub.PutState(contractsIndexStr, jsonAsBytes)												//rewrite open orders
 			if err != nil {
 				return nil, err
 			}
@@ -558,16 +555,17 @@ func (t *InsuranceCC) remove_trade(stub shim.ChaincodeStubInterface, args []stri
 	fmt.Println("- end remove trade")
 	return nil, nil
 }
-
+*/
 // ============================================================================================================================
 // Clean Up Open Trades - make sure open trades are still possible, remove choices that are no longer possible, remove trades that have no valid choices
 // ============================================================================================================================
+/*
 func cleanTrades(stub shim.ChaincodeStubInterface)(err error){
 	var didWork = false
 	fmt.Println("- start clean trades")
 
 	//get the open trade struct
-	tradesAsBytes, err := stub.GetState(contractsIndex)
+	tradesAsBytes, err := stub.GetState(contractsIndexStr)
 	if err != nil {
 		return errors.New("Failed to get opentrades")
 	}
@@ -615,7 +613,7 @@ func cleanTrades(stub shim.ChaincodeStubInterface)(err error){
 	if(didWork){
 		fmt.Println("! saving open trade changes")
 		jsonAsBytes, _ := json.Marshal(trades)
-		err = stub.PutState(contractsIndex, jsonAsBytes)														//rewrite open orders
+		err = stub.PutState(contractsIndexStr, jsonAsBytes)														//rewrite open orders
 		if err != nil {
 			return err
 		}
@@ -626,3 +624,4 @@ func cleanTrades(stub shim.ChaincodeStubInterface)(err error){
 	fmt.Println("- end clean trades")
 	return nil
 }
+*/
